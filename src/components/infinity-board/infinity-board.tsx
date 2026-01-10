@@ -6,6 +6,7 @@ import { ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import InfinityBoardConfig from "./infinity-board-config";
 import {
+	useGetActiveWorkspace,
 	useGetSelectedNode,
 	useIsChatBarOpen,
 	useMindMapActions,
@@ -46,12 +47,11 @@ export default function InfinityBoard() {
 		onConnectForActive,
 		onNodesChangeForActive,
 		onEdgesChangeForActive,
-		getActiveWorkspace,
 	} = useMindMapActions();
 	const selectedNode = useGetSelectedNode();
 	const isChatBarOpen = useIsChatBarOpen();
 
-	const activeWorkspace = getActiveWorkspace();
+	const activeWorkspace = useGetActiveWorkspace();
 	const nodes = activeWorkspace?.nodes || [];
 	const edges = activeWorkspace?.edges || [];
 	const onNodesChange = onNodesChangeForActive;

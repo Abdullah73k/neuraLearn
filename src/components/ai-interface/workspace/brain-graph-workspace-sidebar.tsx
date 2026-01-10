@@ -1,13 +1,16 @@
 "use client";
 
 import { IconDatabase, IconFileWord, IconReport } from "@tabler/icons-react";
-import { NavWorkspaces } from "./workspaces-container";
+import { WorkspacesContainer } from "./workspaces-container";
 import { NavUser } from "./nav-user";
 import {
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
+	SidebarHeader,
 } from "@/components/ui/sidebar";
+import { useMindMapActions, useGetWorkspaces } from "@/store/hooks";
+import { Button } from "@/components/ui/button";
 
 const data = {
 	user: {
@@ -35,14 +38,26 @@ const data = {
 };
 
 export function BrainGraphHistorySidebar() {
+	const { createWorkspace } = useMindMapActions();
+	const workspaces = useGetWorkspaces();
 	return (
 		<Sidebar
 			collapsible="none"
 			className="sticky top-0 hidden h-svh border-l lg:flex"
 			side="right"
 		>
+			<SidebarHeader>
+				<Button
+					onClick={() => {
+						createWorkspace();
+					}}
+					className="cursor-pointer"
+				>
+					Add Workspace
+				</Button>
+			</SidebarHeader>
 			<SidebarContent>
-				<NavWorkspaces workspaces={[]} />
+				<WorkspacesContainer workspaces={workspaces} />
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser user={data.user} />

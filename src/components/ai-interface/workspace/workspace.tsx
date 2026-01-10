@@ -1,3 +1,5 @@
+"use client";
+
 import {
 	SidebarMenuItem,
 	SidebarMenuButton,
@@ -10,23 +12,23 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IconDots, IconTrash } from "@tabler/icons-react";
+import { useMindMapActions } from "@/store/hooks";
 
 export default function Workspace({
-	key,
 	id,
-	name,
+	title,
 	isMobile,
 }: {
-	key: string;
 	id: string;
-	name: string;
+	title: string;
 	isMobile: boolean;
 }) {
+	const { deleteWorkspace } = useMindMapActions();
 	return (
 		<>
-			<SidebarMenuItem key={key}>
+			<SidebarMenuItem key={id}>
 				<SidebarMenuButton>
-					<span>{name}</span>
+					<span>{title}</span>
 				</SidebarMenuButton>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
@@ -41,7 +43,14 @@ export default function Workspace({
 					>
 						<DropdownMenuItem variant="destructive">
 							<IconTrash />
-							<span>Delete</span>
+							<span
+								onClick={() => {
+									deleteWorkspace(id);
+								}}
+								className="cursor-pointer"
+							>
+								Delete
+							</span>
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>

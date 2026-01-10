@@ -20,7 +20,6 @@ export type MindMapActions = {
 	onNodesChangeForActive: (changes: NodeChange<AppNode>[]) => void;
 	onEdgesChangeForActive: (changes: EdgeChange<Edge>[]) => void;
 	onConnectForActive: (connection: Connection) => void;
-	getActiveWorkspace: () => MindMapWorkspace | undefined;
 };
 
 export type MindMapStore = {

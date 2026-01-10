@@ -7,11 +7,12 @@ import {
 	useSidebar,
 } from "@/components/ui/sidebar";
 import Workspaces from "./workspaces";
+import { MindMapWorkspace } from "@/types/store.types";
 
-export function NavWorkspaces({
+export function WorkspacesContainer({
 	workspaces,
 }: {
-	workspaces: { id: string; name: string }[];
+	workspaces: MindMapWorkspace[];
 }) {
 	const { isMobile } = useSidebar();
 
@@ -22,7 +23,7 @@ export function NavWorkspaces({
 			</SidebarGroupLabel>
 			<SidebarMenu>
 				<Workspaces
-					workspaces={workspaces ?? [{ id: "121212", name: "Workspace 1" }]}
+					workspaces={workspaces || []}
 					isMobile={isMobile}
 				/>
 			</SidebarMenu>

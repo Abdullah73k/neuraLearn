@@ -1,10 +1,6 @@
 import { AppNode } from "@/types/nodes";
 import { MindMapStore, MindMapWorkspace } from "@/types/store.types";
-import {
-	applyNodeChanges,
-	applyEdgeChanges,
-	addEdge,
-} from "@xyflow/react";
+import { applyNodeChanges, applyEdgeChanges, addEdge } from "@xyflow/react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
@@ -26,9 +22,6 @@ export const useMindMapStore = create<MindMapStore>()(
 				setIsChatBarOpen() {
 					set((state) => ({ isChatBarOpen: !state.isChatBarOpen }));
 				},
-				getActiveWorkspace() {
-					return activeWorkspaceHelper(get());
-				},
 				createWorkspace() {
 					const newWorkspaceId = crypto.randomUUID();
 					set((state) => ({
@@ -36,7 +29,7 @@ export const useMindMapStore = create<MindMapStore>()(
 							...state.workspaces,
 							{
 								id: newWorkspaceId,
-								title: "New Workspace",
+								title: "Main Topic of This Mindspace",
 								nodes: [
 									{
 										id: crypto.randomUUID(),
