@@ -129,9 +129,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     // Delete the topic
     await db.collection("root_topics").deleteOne({ id: topicId });
 
-    // Note: You may also want to delete the Moorcheh collection
-    // await moorcheh.deleteCollection(topic.moorcheh_collection_id);
-
     return NextResponse.json({
       success: true,
       message: "Topic deleted successfully",

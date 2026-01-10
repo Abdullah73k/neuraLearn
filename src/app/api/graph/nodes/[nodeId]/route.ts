@@ -125,26 +125,18 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Update embedding if title or summary changed
+    if (updates.title || updates.summary) {
+      const { createNodeEmbedding } = await import("@/lib/embeddings");
+      const embedding = await createNodeEmbedding(
+        updates.title || node.title,
+        updates.summary || node.summary
+      );
+      updates.embedding = embedding;
+    }
+
     // Update node
     await db.collection("nodes").updateOne({ id: nodeId }, { $set: updates });
-
-    // Update Moorcheh if summary changed
-    if (updates.summary) {
-      const { moorcheh } = await import("@/lib/moorcheh/client");
-      const { RootTopic } = await import("@/types/graph");
-
-      const rootTopic = await db
-        .collection("root_topics")
-        .findOne({ id: node.root_id });
-
-      if (rootTopic) {
-        await moorcheh.updateNodeContent(
-          rootTopic.moorcheh_collection_id,
-          node.moorcheh_document_id,
-          `# ${updates.title || node.title}\n\n${updates.summary}`
-        );
-      }
-    }
 
     return NextResponse.json({
       success: true,

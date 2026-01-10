@@ -6,14 +6,14 @@ interface PromptContext {
   graphSnapshot: GraphSnapshot;
   userMessage: string;
   conversationHistory?: Array<{ role: string; content: string }>;
-  moorchehSources?: Array<{ text: string; score: number }>;
+  vectorSearchSources?: Array<{ text: string; score: number }>;
 }
 
 /**
  * Build the user prompt with graph context for the AI orchestrator
  */
 export function buildGraphPrompt(ctx: PromptContext): string {
-  const { uiState, graphSnapshot, userMessage, conversationHistory, moorchehSources } =
+  const { uiState, graphSnapshot, userMessage, conversationHistory, vectorSearchSources } =
     ctx;
 
   const locationStatus = uiState.activeNode ? "INSIDE_NODE" : "AT_ROOT";
@@ -68,11 +68,11 @@ ${conversationHistory
   .join("\n")}`
       : "";
 
-  // Build Moorcheh sources block if available
+  // Build vector search sources block if available
   const sourcesBlock =
-    moorchehSources && moorchehSources.length > 0
-      ? `\n## RELEVANT KNOWLEDGE BASE CONTENT (from Moorcheh)
-${moorchehSources.map((s, i) => `[${i + 1}] (score: ${s.score.toFixed(2)}) ${s.text.slice(0, 300)}...`).join("\n")}`
+    vectorSearchSources && vectorSearchSources.length > 0
+      ? `\n## RELEVANT KNOWLEDGE BASE CONTENT (from vector search)
+${vectorSearchSources.map((s, i) => `[${i + 1}] (score: ${s.score.toFixed(2)}) ${s.text.slice(0, 300)}...`).join("\n")}`
       : "";
 
   return `${contextBlock}${historyBlock}${sourcesBlock}

@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, FunctionDeclarationSchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { buildGraphPrompt, getUIState, getGraphSnapshot } from "./prompt-builder";
 import { graphOrchestratorSystemPrompt } from "@/app/(server)/_relation-prompts/graph-orchestrator";
 import { getMongoDb, vectorSearch } from "./db/client";
@@ -21,14 +21,14 @@ Score >= 0.85: Exact match, activate this node
 Score >= 0.65: Related topic, create under this node  
 Score < 0.65: Not related, create under root`,
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             query: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description: "Topic to search for",
             },
             top_k: {
-              type: FunctionDeclarationSchemaType.NUMBER,
+              type: SchemaType.NUMBER,
               description: "Number of results (default 5)",
             },
           },
@@ -39,10 +39,10 @@ Score < 0.65: Not related, create under root`,
         name: "get_node",
         description: "Get full details of a node including its children",
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             node_id: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description: "Node ID to retrieve",
             },
           },
@@ -53,10 +53,10 @@ Score < 0.65: Not related, create under root`,
         name: "get_path_to_root",
         description: "Get ordered path from root to node for UI animation",
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             node_id: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description: "Target node ID",
             },
           },
@@ -68,24 +68,24 @@ Score < 0.65: Not related, create under root`,
         description:
           "Create a new subtopic node with a clear 1-2 sentence summary",
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             title: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description: "Short topic name (max 50 chars)",
             },
             summary: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description:
                 "1-2 sentence student-friendly explanation (20-200 chars)",
             },
             parent_id: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description: "Parent node ID",
             },
             tags: {
-              type: FunctionDeclarationSchemaType.ARRAY,
-              items: { type: FunctionDeclarationSchemaType.STRING },
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
               description: "Keywords for searchability",
             },
           },
@@ -96,10 +96,10 @@ Score < 0.65: Not related, create under root`,
         name: "set_active_node",
         description: "Switch user's active context to a different node",
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             node_id: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description: "Node ID to activate",
             },
           },
@@ -111,14 +111,14 @@ Score < 0.65: Not related, create under root`,
         description:
           "Search web for current info. Only use for latest news/research or fact verification",
         parameters: {
-          type: FunctionDeclarationSchemaType.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             query: {
-              type: FunctionDeclarationSchemaType.STRING,
+              type: SchemaType.STRING,
               description: "Search query",
             },
             num_results: {
-              type: FunctionDeclarationSchemaType.NUMBER,
+              type: SchemaType.NUMBER,
               description: "Results (1-5)",
             },
           },
@@ -236,7 +236,10 @@ async function executeTool(
       // Update parent
       await db
         .collection("nodes")
-        .updateOne({ id: args.parent_id }, { $push: { children_ids: nodeId } });
+        .updateOne(
+          { id: args.parent_id },
+          { $push: { children_ids: nodeId } as any }
+        );
 
       // Update root topic count
       await db
@@ -328,7 +331,7 @@ export async function orchestrateGraphChat(
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction: graphOrchestratorSystemPrompt,
-    tools,
+    tools: tools as any,
   });
 
   // 4. Start chat and send initial message
