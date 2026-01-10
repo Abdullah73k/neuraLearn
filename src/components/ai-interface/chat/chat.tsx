@@ -15,7 +15,7 @@ import {
 	PromptInputTextarea,
 	PromptInputFooter,
 } from "@/components/ai-elements/prompt-input";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { Loader } from "@/components/ai-elements/loader";
 import ChatInputTools from "./chat-input-tools";
@@ -38,6 +38,7 @@ const Chat = () => {
 	const edges = useGetSelectedNodeEdges();
 	const [input, setInput] = useState("");
 	const [model, setModel] = useState<string>(models.value);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const [webSearch, setWebSearch] = useState(false);
 	const { messages, sendMessage, status, regenerate, setMessages, stop } =
 		useChat({
@@ -100,8 +101,7 @@ const Chat = () => {
 						</PromptInputAttachments>
 					</PromptInputHeader>
 					<PromptInputBody>
-						<PromptInputTextarea
-							onChange={(e) => setInput(e.target.value)}
+						<PromptInputTextarea						ref={textareaRef}							onChange={(e) => setInput(e.target.value)}
 							value={input}
 						/>
 					</PromptInputBody>
@@ -111,8 +111,9 @@ const Chat = () => {
 							setModel={setModel}
 							webSearch={webSearch}
 							setWebSearch={setWebSearch}
-							models={models}
-						/>
+						models={models}
+						textareaRef={textareaRef}
+					/>
 						<PromptInputSubmit disabled={!input && !status} status={status} />
 					</PromptInputFooter>
 				</PromptInput>
