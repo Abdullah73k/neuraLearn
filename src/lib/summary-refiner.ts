@@ -1,8 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY || ""
+);
+
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 interface ConversationContext {
   userQuestions: string[];
@@ -57,22 +59,9 @@ Write an IMPROVED 1-2 sentence summary (max 200 characters) that:
 Return ONLY the refined summary text. No explanations, no formatting, no quotes.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 150,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const textBlock = response.content.find(
-      (block): block is Anthropic.TextBlock => block.type === "text"
-    );
-
-    if (!textBlock) {
-      console.error("No text in summary refinement response");
-      return context.currentSummary;
-    }
-
-    const refined = textBlock.text.trim();
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const refined = response.text().trim();
 
     // Validate refined summary
     if (refined.length < 20 || refined.length > 250) {
@@ -105,21 +94,9 @@ Format: Clear, student-friendly definition. Max 200 characters.`
 Format: Clear, student-friendly definition. Max 200 characters.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 100,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const textBlock = response.content.find(
-      (block): block is Anthropic.TextBlock => block.type === "text"
-    );
-
-    if (!textBlock) {
-      return `Introduction to ${title}`;
-    }
-
-    return textBlock.text.trim().slice(0, 200);
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    return response.text().trim().slice(0, 200);
   } catch (error) {
     console.error("Initial summary generation failed:", error);
     return `Introduction to ${title}`;
