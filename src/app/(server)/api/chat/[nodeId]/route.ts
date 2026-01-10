@@ -28,7 +28,7 @@ export async function POST(
 			google_search: google.tools.googleSearch({}),
 		},
 		system: webSearch
-			? "You are a helpful assistant that can answer questions and help with tasks"
+			? "You are a helpful assistant that can answer questions and help with tasks" // Add web search system prompt
 			: "You are a helpful assistant that can answer questions and help with tasks",
 	});
 	// send sources and reasoning back to the client
