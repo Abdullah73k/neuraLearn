@@ -1216,6 +1216,8 @@ export const PromptInputSpeechButton = ({
     >
       {isProcessing ? (
         <Loader2Icon className="size-4 animate-spin" />
+      ) : isRecording ? (
+        <SquareIcon className="size-4" />
       ) : (
         <MicIcon className="size-4" />
       )}
