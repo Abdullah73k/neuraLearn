@@ -5,6 +5,8 @@ import {
 	NodeChange,
 	EdgeChange,
 	applyEdgeChanges,
+	Connection,
+	addEdge,
 } from "@xyflow/react";
 import { UIMessage } from "ai";
 import { create } from "zustand";
@@ -27,7 +29,7 @@ type MindMapActions = {
 	setActiveWorkspace: (id: string) => void;
 	onNodesChangeForActive: (changes: NodeChange<AppNode>[]) => void;
 	onEdgesChangeForActive: (changes: EdgeChange<Edge>[]) => void;
-	// onConnectForActive: (connection: Connection) => void;
+	onConnectForActive: (connection: Connection) => void;
 };
 
 type MindMapStore = {
@@ -133,6 +135,27 @@ export const useMindMapStore = create<MindMapStore>()(
 					const edgesSnapshot = activeWorkspace.edges;
 
 					const updatedEdges = applyEdgeChanges(changes, edgesSnapshot);
+
+					const updatedWorkspace = {
+						...activeWorkspace,
+						edges: updatedEdges,
+					} as MindMapWorkspace;
+
+					set({
+						workspaces: updateWorkspaceHelper(state, updatedWorkspace),
+					});
+				},
+				onConnectForActive(connection) {
+					const state = get();
+					if (state.workspaces.length === 0) return;
+
+					const activeWorkspace = activeWorkspaceHelper(state);
+
+					if (!activeWorkspace) return;
+
+					const edgesSnapshot = activeWorkspace.edges;
+
+					const updatedEdges = addEdge(connection, edgesSnapshot);
 
 					const updatedWorkspace = {
 						...activeWorkspace,
