@@ -10,9 +10,10 @@ import {
 	PromptInputSelectItem,
 	PromptInputSelectTrigger,
 	PromptInputSelectValue,
+	PromptInputSpeechButton,
 	PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, RefObject, SetStateAction } from "react";
 
 type ChatInputToolsProps = {
 	model: string;
@@ -23,6 +24,7 @@ type ChatInputToolsProps = {
 		name: string;
 		value: string;
 	};
+	textareaRef?: RefObject<HTMLTextAreaElement | null>;
 };
 
 export default function ChatInputTools({
@@ -31,6 +33,7 @@ export default function ChatInputTools({
 	webSearch,
 	setWebSearch,
 	models,
+	textareaRef,
 }: ChatInputToolsProps) {
 	return (
 		<PromptInputTools>
@@ -40,6 +43,7 @@ export default function ChatInputTools({
 					<PromptInputActionAddAttachments />
 				</PromptInputActionMenuContent>
 			</PromptInputActionMenu>
+			<PromptInputSpeechButton textareaRef={textareaRef} />
 			<PromptInputButton
 				variant={webSearch ? "default" : "ghost"}
 				onClick={() => setWebSearch(!webSearch)}

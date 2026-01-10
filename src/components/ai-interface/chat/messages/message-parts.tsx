@@ -18,6 +18,7 @@ import {
 	UIMessage,
 	UITools,
 } from "ai";
+import ReadAloudButton from "./read-aloud-button";
 
 export type MessagePartsProps = {
 	message: UIMessage<unknown, UIDataTypes, UITools>;
@@ -34,6 +35,12 @@ export default function MessageParts({
 	regenerate,
 	status,
 }: MessagePartsProps) {
+	// Find the index of the last text part
+	const textParts = message.parts
+		.map((part, idx) => ({ part, idx }))
+		.filter(({ part }) => part.type === "text");
+	const lastTextPartIndex = textParts[textParts.length - 1]?.idx;
+
 	return (
 		<>
 			{message.parts.map((part, i) => {
@@ -44,17 +51,20 @@ export default function MessageParts({
 								<MessageContent>
 									<MessageResponse>{part.text}</MessageResponse>
 								</MessageContent>
-								{message.role === "assistant" && i === messages.length - 1 && (
+								{message.role === "assistant" && i === lastTextPartIndex && (
 									<MessageActions>
-										<MessageAction onClick={() => regenerate()} label="Retry">
-											<RefreshCcwIcon className="size-3" />
-										</MessageAction>
+										{message.id === messages.at(-1)?.id && (
+											<MessageAction onClick={() => regenerate()} label="Retry">
+												<RefreshCcwIcon className="size-3" />
+											</MessageAction>
+										)}
 										<MessageAction
 											onClick={() => navigator.clipboard.writeText(part.text)}
 											label="Copy"
 										>
 											<CopyIcon className="size-3" />
 										</MessageAction>
+										<ReadAloudButton text={part.text} />
 									</MessageActions>
 								)}
 							</Message>
