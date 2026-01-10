@@ -16,7 +16,7 @@ export type MindMapWorkspace = {
 export type MindMapActions = {
 	setSelectedNode: (node: AppNode | null) => void;
 	setIsChatBarOpen: () => void;
-	createWorkspace: () => void;
+	createWorkspace: () => Promise<void>;
 	deleteWorkspace: (id: string) => void;
 	deleteNode: (id: string) => void;
 
@@ -37,6 +37,7 @@ export type MindMapActions = {
 	setActiveWorkspace: (id: string) => void;
 	createNoteNode: () => void;
 	createSubtopicNode: () => void;
+	loadWorkspacesFromDb: () => Promise<void>;
 	onNodesChangeForActive: (changes: NodeChange<AppNode>[]) => void;
 	onEdgesChangeForActive: (changes: EdgeChange<Edge>[]) => void;
 	onConnectForActive: (connection: Connection) => void;

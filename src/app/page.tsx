@@ -5,10 +5,17 @@ import InfinityBoard from "@/components/infinity-board/infinity-board";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useIsChatBarOpen, useMindMapActions } from "@/store/hooks";
 import { WorkspacesSidebar } from "@/components/ai-interface/workspace/workspace-sidebar";
+import { useEffect } from "react";
 
 export default function Page() {
 	const isChatBarOpen = useIsChatBarOpen();
-	const { setIsChatBarOpen } = useMindMapActions();
+	const { setIsChatBarOpen, loadWorkspacesFromDb } = useMindMapActions();
+
+	// Load workspaces from MongoDB on mount
+	useEffect(() => {
+		loadWorkspacesFromDb();
+	}, [loadWorkspacesFromDb]);
+
 	return (
 		<SidebarProvider
 			style={

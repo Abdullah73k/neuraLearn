@@ -216,29 +216,54 @@ export const useMindMapStore = create<MindMapStore>()(
 							}),
 						});
 					},
-					createWorkspace() {
-						const newWorkspaceId = crypto.randomUUID();
-						set((state) => ({
-							workspaces: [
-								...state.workspaces,
-								{
-									id: newWorkspaceId,
-									title: "Main Topic of This Mindspace",
-									nodes: [
-										{
-											id: crypto.randomUUID(),
-											type: "root",
-											position: { x: 0, y: 0 },
-											data: { title: "Main Topic of This Mindspace" },
-										},
-									],
-									edges: [],
-									messages: {},
-									nodeChatSummaries: {},
-								},
-							],
-							activeWorkspaceId: newWorkspaceId,
-						}));
+					async createWorkspace() {
+						const title = "Main Topic of This Mindspace";
+						
+						try {
+							// Create topic in MongoDB first
+							const response = await fetch("/api/graph/topics", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									title,
+									description: `Learn about ${title}`,
+								}),
+							});
+
+							if (!response.ok) {
+								const error = await response.json();
+								console.error("Failed to create topic:", error);
+								return;
+							}
+
+							const data = await response.json();
+							const newWorkspaceId = data.topic.id;
+
+							// Add to local state
+							set((state) => ({
+								workspaces: [
+									...state.workspaces,
+									{
+										id: newWorkspaceId,
+										title: data.topic.title,
+										nodes: [
+											{
+												id: newWorkspaceId,
+												type: "root",
+												position: { x: 0, y: 0 },
+												data: { title: data.topic.title },
+											},
+										],
+										edges: [],
+										messages: {},
+										nodeChatSummaries: {},
+									},
+								],
+								activeWorkspaceId: newWorkspaceId,
+							}));
+						} catch (error) {
+							console.error("Failed to create workspace:", error);
+						}
 					},
 					deleteWorkspace(id: string) {
 						set((state) => ({
@@ -252,6 +277,65 @@ export const useMindMapStore = create<MindMapStore>()(
 						set(() => ({
 							activeWorkspaceId: id,
 						}));
+					},
+					async loadWorkspacesFromDb() {
+						try {
+							const response = await fetch("/api/graph/topics");
+							if (!response.ok) return;
+
+							const data = await response.json();
+							const topics = data.topics || [];
+
+							// Convert topics to workspaces
+							const workspaces: MindMapWorkspace[] = await Promise.all(
+								topics.map(async (topic: any) => {
+									// Fetch full topic tree
+									const topicResponse = await fetch(`/api/graph/topics/${topic.id}`);
+									if (!topicResponse.ok) {
+										return {
+											id: topic.id,
+											title: topic.title,
+											nodes: [
+												{
+													id: topic.id,
+													type: "root" as const,
+													position: { x: 0, y: 0 },
+													data: { title: topic.title },
+												},
+											],
+											edges: [],
+											messages: {},
+											nodeChatSummaries: {},
+										};
+									}
+
+									const topicData = await topicResponse.json();
+									const nodes = topicData.nodes || [];
+									const edges = topicData.edges || [];
+
+									// Convert DB nodes to AppNodes
+									const appNodes: AppNode[] = nodes.map((node: any) => ({
+										id: node.id,
+										type: node.parent_id === null ? "root" : "subtopic",
+										position: { x: 0, y: 0 }, // Layout handled by ReactFlow
+										data: { title: node.title },
+									}));
+
+									return {
+										id: topic.id,
+										title: topic.title,
+										nodes: appNodes,
+										edges,
+										messages: {},
+										nodeChatSummaries: {},
+									};
+								})
+							);
+
+							set({ workspaces });
+						} catch (error) {
+							console.error("Failed to load workspaces:", error);
+						}
 					},
 					onNodesChangeForActive(changes) {
 						const state = get();
