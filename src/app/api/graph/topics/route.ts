@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMongoDb } from "@/lib/db/client";
-import { moorcheh } from "@/lib/moorcheh/client";
+import { createNodeEmbedding } from "@/lib/embeddings";
 import type { RootTopic, Node } from "@/types/graph";
 
 export const runtime = "nodejs";
@@ -15,9 +15,8 @@ interface CreateTopicBody {
  * 
  * Create a new root topic (e.g., "Calculus", "Machine Learning")
  * This creates:
- * 1. A Moorcheh collection for semantic search
- * 2. A root topic document in MongoDB
- * 3. A root node that serves as the graph's starting point
+ * 1. A root topic document in MongoDB
+ * 2. A root node with embedding for vector search
  */
 export async function POST(req: NextRequest) {
   try {
@@ -48,32 +47,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create Moorcheh collection for this topic
-    const collectionId = await moorcheh.createCollection(`neuralearn_${topicId}`);
-
     // Create root topic document
     const rootTopic: Omit<RootTopic, "_id"> = {
       id: topicId,
       title,
       description,
-      moorcheh_collection_id: collectionId,
       node_count: 1, // Root node counts as 1
       created_at: new Date(),
     };
 
     await db.collection("root_topics").insertOne(rootTopic);
 
-    // Ingest root node into Moorcheh
-    const { document_id, chunk_ids } = await moorcheh.ingestNodeContent(
-      collectionId,
-      topicId,
-      {
-        title,
-        summary: description,
-      }
-    );
+    // Generate embedding for root node
+    const embedding = await createNodeEmbedding(title, description);
 
-    // Create root node
+    // Create root node with embedding
     const rootNode: Omit<Node, "_id"> = {
       id: topicId,
       title,
@@ -81,8 +69,7 @@ export async function POST(req: NextRequest) {
       parent_id: null,
       root_id: topicId,
       tags: [],
-      moorcheh_document_id: document_id,
-      moorcheh_chunk_ids: chunk_ids,
+      embedding,
       interaction_count: 0,
       last_refined_at: new Date(),
       created_at: new Date(),
@@ -98,7 +85,6 @@ export async function POST(req: NextRequest) {
         id: topicId,
         title,
         description,
-        moorcheh_collection_id: collectionId,
       },
     });
   } catch (error) {
