@@ -1,7 +1,6 @@
 "use client";
 
 import { nodeTypes } from "@/lib/node-types-map";
-import { useMindMapActions, useMindMapStore } from "@/store/store";
 import { AppNode } from "@/types/nodes";
 import {
 	ReactFlow,
@@ -13,6 +12,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import InfinityBoardConfig from "./infinity-board-config";
+import {
+	useGetSelectedNode,
+	useIsChatBarOpen,
+	useMindMapActions,
+} from "@/store/hooks";
 
 const initialNodes: AppNode[] = [
 	{
@@ -47,30 +51,40 @@ export default function InfinityBoard() {
 	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 	const { setSelectedNode } = useMindMapActions();
-	const selectedNode = useMindMapStore((state) => state.selectedNode);
+	const selectedNode = useGetSelectedNode();
+	const isChatBarOpen = useIsChatBarOpen();
 
 	const onConnect: OnConnect = (params) =>
 		setEdges((edges) => addEdge(params, edges));
 
 	return (
 		<ReactFlowProvider>
-			<div style={{ width: "100vw", height: "100vh" }}>
-				<ReactFlow
-					nodes={nodes}
-					edges={edges}
-					nodeTypes={nodeTypes}
-					onNodesChange={onNodesChange}
-					onEdgesChange={onEdgesChange}
-					onConnect={onConnect}
-					// This gives u info of the node u click on
-					onSelectionChange={({ nodes }) => {
-						const selectedNode = nodes[0] ? nodes[0] : null;
-						setSelectedNode(selectedNode);
+			<div className={`m-3 ${isChatBarOpen ? "ml-1" : ""}`}>
+				<div
+					className="border m-auto"
+					style={{
+						width: `${isChatBarOpen ? "50dvw" : "80dvw"}`,
+						height: "97dvh",
 					}}
-					fitView
 				>
-					<InfinityBoardConfig selectedNode={selectedNode} />
-				</ReactFlow>
+					<ReactFlow
+						nodes={nodes}
+						edges={edges}
+						nodeTypes={nodeTypes}
+						onNodesChange={onNodesChange}
+						onEdgesChange={onEdgesChange}
+						onConnect={onConnect}
+						// This gives u info of the node u click on
+						onSelectionChange={({ nodes }) => {
+							const selectedNode = nodes[0] ? nodes[0] : null;
+							setSelectedNode(selectedNode);
+						}}
+						fitViewOptions={{ padding: 0.2 }}
+						fitView
+					>
+						<InfinityBoardConfig selectedNode={selectedNode} />
+					</ReactFlow>
+				</div>
 			</div>
 		</ReactFlowProvider>
 	);
