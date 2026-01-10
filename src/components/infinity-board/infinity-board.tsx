@@ -13,6 +13,7 @@ import {
 } from "@/store/hooks";
 import { edgeTypes } from "@/lib/edge-types-map";
 import { COLORS } from "../edges/mindmap-edge";
+import GlobalMic from "../global-mic/global-mic";
 
 export default function InfinityBoard() {
 	const {
@@ -85,6 +86,7 @@ export default function InfinityBoard() {
 				>
 					<InfinityBoardConfig selectedNode={selectedNode} />
 				</ReactFlow>
+				<GlobalMic />
 			</div>
 		</ReactFlowProvider>
 	);
