@@ -1086,95 +1086,139 @@ export const PromptInputSpeechButton = ({
   onTranscriptionChange,
   ...props
 }: PromptInputSpeechButtonProps) => {
-  const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(
-    null
-  );
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const controller = useOptionalPromptInputController();
 
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-    ) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      const speechRecognition = new SpeechRecognition();
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm",
+      });
 
-      speechRecognition.continuous = true;
-      speechRecognition.interimResults = true;
-      speechRecognition.lang = "en-US";
+      chunksRef.current = [];
 
-      speechRecognition.onstart = () => {
-        setIsListening(true);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
       };
 
-      speechRecognition.onend = () => {
-        setIsListening(false);
-      };
+      mediaRecorder.onstop = async () => {
+        setIsProcessing(true);
+        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
 
-      speechRecognition.onresult = (event) => {
-        let finalTranscript = "";
+        // Send to server for transcription
+        try {
+          const formData = new FormData();
+          // Create a File object with proper filename
+          const audioFile = new File([audioBlob], "recording.webm", {
+            type: "audio/webm",
+          });
+          formData.append("audio", audioFile);
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0]?.transcript ?? "";
+          console.log("Sending audio file:", {
+            name: audioFile.name,
+            type: audioFile.type,
+            size: audioFile.size,
+          });
+
+          const response = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+            console.error("Transcription API error:", {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorData,
+            });
+            throw new Error(errorData.error || `Transcription failed with status ${response.status}`);
           }
-        }
 
-        if (finalTranscript && textareaRef?.current) {
-          const textarea = textareaRef.current;
-          const currentValue = textarea.value;
-          const newValue =
-            currentValue + (currentValue ? " " : "") + finalTranscript;
+          const data = await response.json();
+          console.log("Transcription successful:", data);
+          const transcribedText = data.text || "";
 
-          textarea.value = newValue;
-          textarea.dispatchEvent(new Event("input", { bubbles: true }));
-          onTranscriptionChange?.(newValue);
+          // Update textarea with transcribed text
+          if (textareaRef?.current) {
+            const textarea = textareaRef.current;
+            const currentValue = textarea.value;
+            const newValue =
+              currentValue + (currentValue ? " " : "") + transcribedText;
+
+            textarea.value = newValue;
+            textarea.dispatchEvent(new Event("input", { bubbles: true }));
+            onTranscriptionChange?.(newValue);
+
+            // If using provider, update its state too
+            if (controller) {
+              controller.textInput.setInput(newValue);
+            }
+          }
+        } catch (error) {
+          console.error("Transcription error:", error);
+          alert("Failed to transcribe audio. Please try again.");
+        } finally {
+          setIsProcessing(false);
+          // Stop all tracks
+          stream.getTracks().forEach((track) => track.stop());
         }
       };
 
-      speechRecognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-      };
-
-      recognitionRef.current = speechRecognition;
-      setRecognition(speechRecognition);
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      alert("Could not access microphone. Please check permissions.");
     }
+  }, [textareaRef, onTranscriptionChange, controller]);
 
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, [textareaRef, onTranscriptionChange]);
-
-  const toggleListening = useCallback(() => {
-    if (!recognition) {
-      return;
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
+  }, [isRecording]);
 
-    if (isListening) {
-      recognition.stop();
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
     } else {
-      recognition.start();
+      startRecording();
     }
-  }, [recognition, isListening]);
+  }, [isRecording, startRecording, stopRecording]);
 
   return (
     <PromptInputButton
       className={cn(
         "relative transition-all duration-200",
-        isListening && "animate-pulse bg-accent text-accent-foreground",
+        isRecording && "animate-pulse bg-red-500 text-white hover:bg-red-600",
+        isProcessing && "opacity-50 cursor-not-allowed",
         className
       )}
-      disabled={!recognition}
-      onClick={toggleListening}
+      disabled={isProcessing}
+      onClick={toggleRecording}
+      title={
+        isRecording
+          ? "Stop recording"
+          : isProcessing
+            ? "Processing..."
+            : "Start voice input"
+      }
       {...props}
     >
-      <MicIcon className="size-4" />
+      {isProcessing ? (
+        <Loader2Icon className="size-4 animate-spin" />
+      ) : (
+        <MicIcon className="size-4" />
+      )}
     </PromptInputButton>
   );
 };
