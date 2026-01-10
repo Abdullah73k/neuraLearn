@@ -14,8 +14,5 @@ export const useMindMapActions = () =>
 export const useGetSelectedNode = () =>
 	useMindMapStore((state) => state.selectedNode);
 
-export const useGetChatNodes = () =>
-	useMindMapStore((state) => state.chatNodes);
-
 export const useIsChatBarOpen = () =>
 	useMindMapStore((state) => state.isChatBarOpen);

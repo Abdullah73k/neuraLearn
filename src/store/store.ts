@@ -1,25 +1,15 @@
 import { AppNode } from "@/types/nodes";
-import {
-	applyNodeChanges,
-	Connection,
-	Edge,
-	EdgeChange,
-	NodeChange,
-} from "@xyflow/react";
+import { applyNodeChanges, Edge, NodeChange } from "@xyflow/react";
 import { UIMessage } from "ai";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-type WorkSpaceNode = {
-	node: AppNode;
-	messages: UIMessage[]; // placeholder for when i get
-	edges: Edge[];
-};
-
 type MindMapWorkspace = {
 	id: string;
 	title: string;
-	nodes: WorkSpaceNode[];
+	nodes: AppNode[];
+	edges: Edge[];
+	messages: Record<string, UIMessage[]>;
 };
 
 type MindMapActions = {
@@ -66,16 +56,14 @@ export const useMindMapStore = create<MindMapStore>()(
 								title: "New Workspace",
 								nodes: [
 									{
-										node: {
-											id: crypto.randomUUID(),
-											type: "root",
-											position: { x: 0, y: 0 },
-											data: { title: "Main Topic of This Mindspace" },
-										},
-										messages: [],
-										edges: [],
+										id: crypto.randomUUID(),
+										type: "root",
+										position: { x: 0, y: 0 },
+										data: { title: "Main Topic of This Mindspace" },
 									},
 								],
+								edges: [],
+								messages: {},
 							},
 						],
 						activeWorkspaceId: newWorkspaceId,
@@ -104,29 +92,20 @@ export const useMindMapStore = create<MindMapStore>()(
 
 					if (!activeWorkspace) return;
 
-					const nodesSnapshot = activeWorkspace.nodes.map(
-						(node) => node.node
-					) as AppNode[];
+					const nodesSnapshot = activeWorkspace.nodes;
 
 					const updatedNodes = applyNodeChanges(changes, nodesSnapshot);
 
-					const updatedWorkSpaceNodes = activeWorkspace.nodes.map((wsNode) => {
-						const newNode = updatedNodes.find(
-							(node) => node.id === wsNode.node.id
-						);
-						return newNode
-							? {
-									...wsNode,
-									node: newNode,
-							  }
-							: wsNode;
-					});
 					const updatedWorkspace = {
 						...activeWorkspace,
-						nodes: updatedWorkSpaceNodes,
+						nodes: updatedNodes,
 					};
 					set({
-						workspaces: [updatedWorkspace, ...state.workspaces],
+						workspaces: state.workspaces.map((workspace) =>
+							workspace.id === updatedWorkspace.id
+								? updatedWorkspace
+								: workspace
+						),
 					});
 				},
 			},
