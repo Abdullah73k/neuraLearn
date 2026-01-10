@@ -16,7 +16,7 @@ export default function InfinityBoardConfig({
 			<MiniMap bgColor="grey" zoomable pannable />
 			{selectedNode ? <PanelBottomMiddle /> : null}
 			<PanelTopLeft />
-			<PanelTopMiddle />
+			{/* <PanelTopMiddle /> */}
 		</>
 	);
 }

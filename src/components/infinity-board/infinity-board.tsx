@@ -59,32 +59,30 @@ export default function InfinityBoard() {
 
 	return (
 		<ReactFlowProvider>
-			<div className={`m-3 ${isChatBarOpen ? "ml-1" : ""}`}>
-				<div
-					className="border m-auto"
-					style={{
-						width: `${isChatBarOpen ? "50dvw" : "80dvw"}`,
-						height: "97dvh",
+			<div
+				className="m-auto"
+				style={{
+					width: `${isChatBarOpen ? "50dvw" : "80dvw"}`,
+					height: "100dvh",
+				}}
+			>
+				<ReactFlow
+					nodes={nodes}
+					edges={edges}
+					nodeTypes={nodeTypes}
+					onNodesChange={onNodesChange}
+					onEdgesChange={onEdgesChange}
+					onConnect={onConnect}
+					// This gives u info of the node u click on
+					onSelectionChange={({ nodes }) => {
+						const selectedNode = nodes[0] ? nodes[0] : null;
+						setSelectedNode(selectedNode);
 					}}
+					fitViewOptions={{ padding: 0.2 }}
+					fitView
 				>
-					<ReactFlow
-						nodes={nodes}
-						edges={edges}
-						nodeTypes={nodeTypes}
-						onNodesChange={onNodesChange}
-						onEdgesChange={onEdgesChange}
-						onConnect={onConnect}
-						// This gives u info of the node u click on
-						onSelectionChange={({ nodes }) => {
-							const selectedNode = nodes[0] ? nodes[0] : null;
-							setSelectedNode(selectedNode);
-						}}
-						fitViewOptions={{ padding: 0.2 }}
-						fitView
-					>
-						<InfinityBoardConfig selectedNode={selectedNode} />
-					</ReactFlow>
-				</div>
+					<InfinityBoardConfig selectedNode={selectedNode} />
+				</ReactFlow>
 			</div>
 		</ReactFlowProvider>
 	);

@@ -12,7 +12,9 @@ export default function PanelTopMiddle() {
 			<Breadcrumb>
 				<BreadcrumbList>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink>Building Your Application</BreadcrumbLink>
+						<BreadcrumbLink className="text-lg text-mono text-cyan-500 font-light">
+							Building Your Application
+						</BreadcrumbLink>
 					</BreadcrumbItem>
 				</BreadcrumbList>
 			</Breadcrumb>
