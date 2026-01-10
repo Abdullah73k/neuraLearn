@@ -1,7 +1,6 @@
 "use client";
 
 import { nodeTypes } from "@/lib/node-types-map";
-import { AppNode } from "@/types/nodes";
 import { ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import InfinityBoardConfig from "./infinity-board-config";
@@ -11,35 +10,6 @@ import {
 	useIsChatBarOpen,
 	useMindMapActions,
 } from "@/store/hooks";
-
-const initialNodes: AppNode[] = [
-	{
-		id: "root-1",
-		type: "root",
-		position: { x: 0, y: 0 },
-		data: { title: "Main Topic of This Mindspace" },
-	},
-	{
-		id: "sub-1",
-		type: "subtopic",
-		position: { x: 300, y: 0 },
-		data: { title: "First Subtopic" },
-	},
-	{
-		id: "note-1",
-		type: "note",
-		position: { x: 300, y: 200 },
-		data: { title: "Random Note", description: "This is just a free note." },
-	},
-];
-
-const initialEdges = [
-	{
-		id: "root-1-sub-1",
-		source: "root-1",
-		target: "sub-1",
-	},
-];
 
 export default function InfinityBoard() {
 	const {
@@ -57,6 +27,16 @@ export default function InfinityBoard() {
 	const onNodesChange = onNodesChangeForActive;
 	const onEdgesChange = onEdgesChangeForActive;
 	const onConnect = onConnectForActive;
+
+	if (!activeWorkspace) {
+		return (
+			<div className="flex justify-center items-center">
+				<p className="text-mono text-pretty text-purple-500 text-lg">
+					Select or create a workspace to get started!
+				</p>
+			</div>
+		);
+	}
 
 	return (
 		<ReactFlowProvider>

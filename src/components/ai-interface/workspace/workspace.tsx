@@ -23,10 +23,14 @@ export default function Workspace({
 	title: string;
 	isMobile: boolean;
 }) {
-	const { deleteWorkspace } = useMindMapActions();
+	const { deleteWorkspace, setActiveWorkspace } = useMindMapActions();
 	return (
 		<>
-			<SidebarMenuItem key={id}>
+			<SidebarMenuItem
+				key={id}
+				className="cursor-pointer"
+				onClick={() => setActiveWorkspace(id)}
+			>
 				<SidebarMenuButton>
 					<span>{title}</span>
 				</SidebarMenuButton>
@@ -41,16 +45,15 @@ export default function Workspace({
 						side={isMobile ? "bottom" : "right"}
 						align={isMobile ? "end" : "start"}
 					>
-						<DropdownMenuItem variant="destructive">
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => {
+								deleteWorkspace(id);
+							}}
+							className="cursor-pointer"
+						>
 							<IconTrash />
-							<span
-								onClick={() => {
-									deleteWorkspace(id);
-								}}
-								className="cursor-pointer"
-							>
-								Delete
-							</span>
+							<span>Delete</span>
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>

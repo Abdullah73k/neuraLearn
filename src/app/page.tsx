@@ -20,7 +20,7 @@ export default function Page() {
 			onOpenChange={setIsChatBarOpen}
 		>
 			<ChatSidebar />
-			<SidebarInset className="flex-1 h-full">
+			<SidebarInset className="flex justify-center items-center">
 				<InfinityBoard />
 			</SidebarInset>
 			<BrainGraphHistorySidebar />
