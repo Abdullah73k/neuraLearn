@@ -14,76 +14,93 @@ export async function POST(
 	req: Request,
 	{ params }: { params: Promise<{ nodeId: string }> }
 ) {
-	const {
-		messages,
-		model,
-		webSearch,
-		edges,
-	}: {
-		messages: UIMessage[];
-		model: string;
-		webSearch: boolean;
-		edges: Edge[];
-	} = await req.json();
-	const { nodeId } = await params;
+	try {
+		const body = await req.json();
+		const { messages, model, webSearch, edges } = body;
 
-	const db = await getMongoDb();
-	
-	// Get the active node to determine context
-	const activeNode = await db.collection<Node>("nodes").findOne({ id: nodeId });
-	
-	if (!activeNode) {
+		console.log("Request body:", JSON.stringify(body, null, 2));
+		console.log("Messages:", messages);
+
+		if (!messages || !Array.isArray(messages)) {
+			return new Response(
+				JSON.stringify({ 
+					error: "messages must be an array",
+					received: typeof messages,
+					body: body
+				}),
+				{ status: 400, headers: { "Content-Type": "application/json" } }
+			);
+		}
+
+		const { nodeId } = await params;
+		console.log("nodeId: ", nodeId);
+
+		const db = await getMongoDb();
+		
+		// Get the active node to determine context
+		const activeNode = await db.collection<Node>("nodes").findOne({ id: nodeId });
+		
+		if (!activeNode) {
+			return new Response(
+				JSON.stringify({ error: "Node not found" }),
+				{ status: 404, headers: { "Content-Type": "application/json" } }
+			);
+		}
+
+		const rootNodeId = activeNode.root_id;
+
+		// Build graph context for the AI
+		const uiState = await getUIState(rootNodeId, nodeId);
+		const graphSnapshot = await getGraphSnapshot(rootNodeId, nodeId);
+
+		// Get the latest user message
+		const lastUserMessage = messages
+			.filter((m: any) => m.role === "user")
+			.pop()?.content || "";
+
+		// Build conversation history for context
+		const conversationHistory = messages.slice(-6).map((m: any) => ({
+			role: m.role,
+			content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+		}));
+
+		// Build the context-aware prompt
+		const contextPrompt = buildGraphPrompt({
+			uiState,
+			graphSnapshot,
+			userMessage: lastUserMessage,
+			conversationHistory,
+		});
+
+		// Determine system prompt based on whether we're at root or inside a node
+		const systemPrompt = nodeId === rootNodeId
+			? graphOrchestratorSystemPrompt
+			: `${backgroundPrompt}\n\n${graphOrchestratorSystemPrompt}`;
+
+		// Build tools configuration
+		const tools: any = webSearch ? {
+			google_search: google.tools.googleSearch({}),
+		} : undefined;
+
+		const result = streamText({
+			model: google(model),
+			messages: [
+				{ role: "user", content: contextPrompt },
+				...messages,
+			],
+			system: systemPrompt,
+			tools,
+		});
+
+		return result.toTextStreamResponse();
+	} catch (error) {
+		console.error("Chat error:", error);
 		return new Response(
-			JSON.stringify({ error: "Node not found" }),
-			{ status: 404 }
+			JSON.stringify({
+				error: "Failed to process chat",
+				details: error instanceof Error ? error.message : "Unknown error",
+			}),
+			{ status: 500, headers: { "Content-Type": "application/json" } }
 		);
 	}
-
-	const rootNodeId = activeNode.root_id;
-
-	// Build graph context for the AI
-	const uiState = await getUIState(rootNodeId, nodeId);
-	const graphSnapshot = await getGraphSnapshot(rootNodeId, nodeId);
-
-	// Convert messages to get the latest user message
-	const convertedMessages = convertToModelMessages(messages);
-	const lastUserMessage = convertedMessages
-		.filter((m) => m.role === "user")
-		.pop()?.content?.toString() || "";
-
-	// Build the context-aware prompt
-	const contextPrompt = buildGraphPrompt({
-		uiState,
-		graphSnapshot,
-		userMessage: lastUserMessage,
-		conversationHistory: convertedMessages.slice(-6).map((m) => ({
-			role: m.role,
-			content: m.content?.toString() || "",
-		})),
-	});
-
-	// Determine system prompt based on whether we're at root or inside a node
-	const systemPrompt = nodeId === rootNodeId
-		? graphOrchestratorSystemPrompt
-		: `${backgroundPrompt}\n\n${graphOrchestratorSystemPrompt}`;
-
-	// Build tools configuration
-	const tools: any = webSearch ? {
-		google_search: google.tools.googleSearch({}),
-	} : undefined;
-
-	const result = streamText({
-		model: google(model),
-		messages: [
-			{ role: "user", content: contextPrompt },
-			...convertedMessages,
-		],
-		system: systemPrompt,
-		tools,
-	});
-
-	return result.toUIMessageStreamResponse({
-		sendSources: true,
-		sendReasoning: true,
-	});
 }
