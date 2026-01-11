@@ -35,12 +35,14 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNode>) {
 					: ""
 			)}
 		>
-			{/* Animated shine border effect */}
-			<ShineBorder
-				borderWidth={2}
-				duration={12}
-				shineColor={["#f97316", "#eab308", "#84cc16", "#f97316"]}
-			/>
+			{/* Animated shine border effect - only when selected */}
+			{selected && (
+				<ShineBorder
+					borderWidth={2}
+					duration={12}
+					shineColor={["#f97316", "#eab308", "#84cc16", "#f97316"]}
+				/>
+			)}
 			
 			{/* Header area with title - similar to "output" label in reference */}
 			<div className="mb-3 pb-2 border-b border-neutral-100">

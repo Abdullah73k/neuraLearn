@@ -31,12 +31,14 @@ export function SubtopicNode({ id, data, selected }: NodeProps<SubtopicNode>) {
 					: ""
 			)}
 		>
-			{/* Animated shine border effect */}
-			<ShineBorder
-				borderWidth={2}
-				duration={10}
-				shineColor={["#a855f7", "#ec4899", "#f97316", "#a855f7"]}
-			/>
+			{/* Animated shine border effect - only when selected */}
+			{selected && (
+				<ShineBorder
+					borderWidth={2}
+					duration={10}
+					shineColor={["#a855f7", "#ec4899", "#f97316", "#a855f7"]}
+				/>
+			)}
 			
 			{/* Title input - centered */}
 			<Input

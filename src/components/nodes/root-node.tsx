@@ -30,12 +30,14 @@ export function RootNode({ data, selected }: NodeProps<RootNode>) {
 				selected ? "ring-2 ring-cyan-200" : ""
 			)}
 		>
-			{/* Animated shine border effect */}
-			<ShineBorder
-				borderWidth={2}
-				duration={8}
-				shineColor={["#06b6d4", "#3b82f6", "#8b5cf6", "#06b6d4"]}
-			/>
+			{/* Animated shine border effect - only when selected */}
+			{selected && (
+				<ShineBorder
+					borderWidth={2}
+					duration={8}
+					shineColor={["#06b6d4", "#3b82f6", "#8b5cf6", "#06b6d4"]}
+				/>
+			)}
 			
 			{/* Main title input - prominent and centered */}
 			<Input
