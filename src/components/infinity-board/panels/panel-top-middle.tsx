@@ -13,7 +13,7 @@ import { relations, RelationType } from "@/types/edges";
 export default function PanelTopMiddle() {
 	const currentRelationType = useGetCurrentRelationType();
 	const selectedNode = useGetSelectedNode();
-	const { createSubtopicNode, createNoteNode, setCurrentRelationType, deleteNode } =
+	const { createSubtopicNode, createNoteNode, setCurrentRelationType, deleteNode, rebalanceLayout } =
 		useMindMapActions();
 	
 	// Determine if delete button should be disabled
