@@ -1,9 +1,11 @@
-import { streamText, UIMessage, convertToModelMessages } from "ai";
+import { streamText, UIMessage, convertToModelMessages, tool } from "ai";
 import { google } from "@ai-sdk/google";
 import { Edge } from "@xyflow/react";
 import { getMongoDb } from "@/lib/db/client";
 import { createNodeEmbedding } from "@/lib/embeddings";
+import { createNode } from "@/lib/graph-tools";
 import type { Node } from "@/types/graph";
+import { z } from "zod";
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -28,13 +30,23 @@ export async function POST(
     console.log("nodeId: ", nodeId);
     console.log("edges: ", edges);
 
+    // Get current node to determine root_id for vector search
+    const db = await getMongoDb();
+    const currentNode = await db.collection<Node>("nodes").findOne({ id: nodeId });
+    const rootId = currentNode?.root_id;
+
+    // Build tools object
+    const tools: Record<string, any> = {};
+
+    if (webSearch) {
+        tools.google_search = google.tools.googleSearch({});
+    }
+
     const result = streamText({
         model: google(model),
         messages: convertToModelMessages(messages),
-        tools: webSearch ? {
-            google_search: google.tools.googleSearch({}),
-        } : undefined,
-        system: "You are a helpful assistant that can answer questions and help with tasks",
+        tools: Object.keys(tools).length > 0 ? tools : undefined,
+        system: "You are a helpful assistant that can answer questions and help with tasks.",
         onFinish: async ({ text }) => {
             // Update node summary and save interaction after chat completes
             try {
