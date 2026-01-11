@@ -17,6 +17,7 @@ export function WorkspacesSidebar() {
 			variant="floating"
 			side="right"
 			collapsible="offcanvas"
+			className="w-70"
 		>
 			<SidebarHeader>
 				<RainbowButton

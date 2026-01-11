@@ -46,9 +46,9 @@ export default function InfinityBoard() {
 	return (
 		<ReactFlowProvider>
 			<div
-				className="mr-80"
+				className="mr-72"
 				style={{
-					width: `${isChatBarOpen ? "55dvw" : "84dvw"}`,
+					width: `${isChatBarOpen ? "50dvw" : "82dvw"}`,
 					height: "100dvh",
 				}}
 			>
