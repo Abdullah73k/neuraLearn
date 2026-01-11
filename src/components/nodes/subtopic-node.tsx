@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useMindMapActions } from "@/store/hooks";
 import { ShineBorder } from "@/components/ui/shine-border";
+import { NeonGradientBorder } from "@/components/ui/neon-gradient-border";
 
 /**
  * Subtopic Node Component
@@ -25,12 +26,20 @@ export function SubtopicNode({ id, data, selected }: NodeProps<SubtopicNode>) {
 	return (
 		<div
 			className={cn(
-				"relative rounded-full bg-white shadow-sm p-4 w-[160px] h-[160px] flex items-center justify-center transition-all",
+				"relative rounded-full bg-white p-4 w-[160px] h-[160px] flex items-center justify-center transition-all",
 				selected
 					? "ring-2 ring-purple-200"
 					: ""
 			)}
+			style={{ boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)" }}
 		>
+			{/* Neon gradient border effect - always visible */}
+			<NeonGradientBorder
+				borderWidth={2}
+				neonColors={{ firstColor: "#a855f7", secondColor: "#ec4899" }}
+				blurAmount={12}
+			/>
+			
 			{/* Animated shine border effect - only when selected */}
 			{selected && (
 				<ShineBorder
