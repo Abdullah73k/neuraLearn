@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   useGetActiveWorkspace,
+  useGetSelectedNode,
   useMindMapActions,
 } from "@/store/hooks";
 import {
@@ -40,6 +41,7 @@ export default function GlobalMic() {
   const streamRef = useRef<MediaStream | null>(null);
 
   const activeWorkspace = useGetActiveWorkspace();
+  const selectedNode = useGetSelectedNode();
   const {
     setSelectedNode,
     addMessageToNode,
@@ -122,12 +124,25 @@ export default function GlobalMic() {
       setTranscription(transcribedText);
 
       // Step 2: Intelligent routing - find the best node for this question
+      // Get recent chat messages for context (last 3 messages to understand "his", "it", etc.)
+      // IMPORTANT: Only use selectedNode if it belongs to the current workspace
+      const nodeInCurrentWorkspace = selectedNode?.id && activeWorkspace?.nodes.some(n => n.id === selectedNode.id);
+      
+      const recentMessages = nodeInCurrentWorkspace && selectedNode?.id && activeWorkspace 
+        ? (activeWorkspace.messages[selectedNode.id] || []).slice(-3).map(m => ({
+            role: m.role,
+            content: m.parts.map(p => p.type === 'text' ? p.text : '').join(' ')
+          }))
+        : [];
+      
       const routeResponse = await fetch("/api/graph/route-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: transcribedText,
           rootId: activeWorkspace?.id,
+          currentNodeId: nodeInCurrentWorkspace ? selectedNode?.id : null, // Only pass if node is in current workspace
+          recentMessages,
         }),
       });
 
@@ -149,6 +164,20 @@ export default function GlobalMic() {
     if (!routingResult || !activeWorkspace) return;
 
     try {
+      // Verify workspace still exists (user might have deleted it during routing)
+      const { useMindMapStore } = await import("@/store/store");
+      const currentWorkspace = useMindMapStore.getState().workspaces.find(
+        w => w.id === activeWorkspace.id
+      );
+      
+      if (!currentWorkspace) {
+        console.log("Workspace was deleted during routing, canceling navigation");
+        setState("idle");
+        setTranscription("");
+        setRoutingResult(null);
+        return;
+      }
+
       let targetNodeId = routingResult.nodeId;
 
       // If creating a new node, create it now (after user confirmed)
@@ -175,20 +204,39 @@ export default function GlobalMic() {
         targetNodeId = createData.node.id;
 
         // Reload workspaces to get the new node
-        const { useMindMapStore } = await import("@/store/store");
         await useMindMapStore.getState().actions.loadWorkspacesFromDb();
         
         // Small delay to ensure state is updated
         await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Re-verify workspace still exists after reload
+        const reloadedWorkspace = useMindMapStore.getState().workspaces.find(
+          w => w.id === activeWorkspace.id
+        );
+        
+        if (!reloadedWorkspace) {
+          console.log("Workspace was deleted during node creation, canceling navigation");
+          setState("idle");
+          setTranscription("");
+          setRoutingResult(null);
+          return;
+        }
       }
 
       // Find the target node and select it
-      const { useMindMapStore } = await import("@/store/store");
-      const currentWorkspace = useMindMapStore.getState().workspaces.find(
+      const finalWorkspace = useMindMapStore.getState().workspaces.find(
         w => w.id === activeWorkspace.id
       );
       
-      const targetNode = currentWorkspace?.nodes.find(n => n.id === targetNodeId);
+      if (!finalWorkspace) {
+        console.log("Workspace no longer exists, canceling navigation");
+        setState("idle");
+        setTranscription("");
+        setRoutingResult(null);
+        return;
+      }
+      
+      const targetNode = finalWorkspace.nodes.find(n => n.id === targetNodeId);
       
       if (targetNode) {
         // Select the node to open its chat
@@ -197,21 +245,11 @@ export default function GlobalMic() {
         // Open the chat sidebar
         setIsChatBarOpen();
         
-        // Create a user message
-        const userMessage = {
-          id: crypto.randomUUID(),
-          role: "user" as const,
-          parts: [{ type: "text" as const, text: routingResult.question }],
-        };
-        
-        // Add the question as a message to the node's chat
-        addMessageToNode(targetNodeId, userMessage);
-        
         // Wait for Chat component to mount and set up event listener
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // Dispatch event to notify chat component to send the message
-        // The chat component will listen for this and trigger the AI
+        // Dispatch event to notify chat component to add message and trigger AI
+        // The chat component will handle adding the message (avoiding duplicates)
         window.dispatchEvent(new CustomEvent('voice-message-added', {
           detail: {
             nodeId: targetNodeId,
@@ -219,8 +257,8 @@ export default function GlobalMic() {
           }
         }));
       } else {
-        console.error("Could not find target node:", targetNodeId);
-        setError("Failed to find the target node");
+        console.log("Target node not found in workspace (may have been deleted)");
+        // Don't show error - user likely deleted it intentionally
       }
 
       // Reset state
