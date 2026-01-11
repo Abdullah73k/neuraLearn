@@ -25,10 +25,17 @@ export function SubtopicNode({ id, data, selected }: NodeProps<SubtopicNode>) {
 		<div
 			className={cn(
 				"relative rounded-full border bg-white shadow-sm p-4 w-[160px] h-[160px] flex items-center justify-center transition-all",
-				selected
-					? "border-purple-500 ring-2 ring-purple-200"
-					: "border-neutral-200"
+				selected ? "border-violet-400 animate-pulse-glow" : "border-neutral-200"
 			)}
+			style={
+				selected
+					? {
+							boxShadow:
+								"0 0 15px 2px rgba(196, 181, 253, 0.3), 0 0 25px 4px rgba(167, 139, 250, 0.2)",
+							animation: "pulse-glow 2s ease-in-out infinite",
+					  }
+					: undefined
+			}
 		>
 			{/* Title input - centered */}
 			<Input

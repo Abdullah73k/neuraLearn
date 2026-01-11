@@ -26,8 +26,17 @@ export function RootNode({ data, selected }: NodeProps<RootNode>) {
 		<div
 			className={cn(
 				"relative rounded-2xl border bg-white shadow-sm px-6 py-4 min-w-[280px] min-h-[80px] flex items-center justify-center transition-all",
-				selected ? "border-cyan-500 ring-2 ring-cyan-200" : "border-neutral-200"
+				selected ? "border-violet-400" : "border-neutral-200"
 			)}
+			style={
+				selected
+					? {
+							boxShadow:
+								"0 0 15px 2px rgba(196, 181, 253, 0.3), 0 0 25px 4px rgba(167, 139, 250, 0.2)",
+							animation: "pulse-glow 2s ease-in-out infinite",
+					  }
+					: undefined
+			}
 		>
 			{/* Main title input - prominent and centered */}
 			<Input
