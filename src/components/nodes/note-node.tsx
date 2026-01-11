@@ -29,10 +29,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNode>) {
 	return (
 		<div
 			className={cn(
-				"relative rounded-2xl bg-white shadow-sm px-4 py-3 min-w-[240px] min-h-[180px] flex flex-col transition-all",
-				selected
-					? "ring-2 ring-orange-200"
-					: ""
+				"relative rounded-2xl bg-white shadow-sm px-4 py-3 min-w-[240px] min-h-[180px] flex flex-col transition-all"
 			)}
 		>
 			{/* Animated shine border effect - only when selected */}
