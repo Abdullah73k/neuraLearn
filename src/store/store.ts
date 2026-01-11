@@ -129,7 +129,7 @@ export const useMindMapStore = create<MindMapStore>()(
 							console.error("Failed to update node title in DB:", error);
 						}
 					},
-					setRootNodeTitle(event) {
+					async setRootNodeTitle(event) {
 						const state = get();
 						const activeWorkspace = activeWorkspaceHelper(state);
 						if (!activeWorkspace) return;
@@ -137,21 +137,47 @@ export const useMindMapStore = create<MindMapStore>()(
 						const activeWorkspaceRootNode = activeWorkspace.nodes.filter(
 							(node) => node.type === "root"
 						)[0];
+						
+						if (!activeWorkspaceRootNode) return;
+
+						const newTitle = event.target.value;
+
 						const updatedRootNode: RootNode = {
 							...activeWorkspaceRootNode,
 							data: {
 								...activeWorkspaceRootNode.data,
-								title: event.target.value,
+								title: newTitle,
 							},
 						};
 						const updatedWorkspace: MindMapWorkspace = {
 							...activeWorkspace,
+							title: newTitle, // Update workspace title too
 							nodes: activeWorkspace.nodes.map((node) =>
 								node.id === activeWorkspaceRootNode.id ? updatedRootNode : node
 							),
 						};
 
 						set({ workspaces: updateWorkspaceHelper(state, updatedWorkspace) });
+
+						// Update in MongoDB (both topic and node)
+						try {
+							await Promise.all([
+								// Update topic title
+								fetch(`/api/graph/topics/${activeWorkspace.id}`, {
+									method: "PATCH",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({ title: newTitle }),
+								}),
+								// Update node title
+								fetch(`/api/graph/nodes/${activeWorkspaceRootNode.id}`, {
+									method: "PATCH",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({ title: newTitle }),
+								}),
+							]);
+						} catch (error) {
+							console.error("Failed to update root node title in DB:", error);
+						}
 					},
 					appendNodeChat(nodeId, messages) {
 						const state = get();

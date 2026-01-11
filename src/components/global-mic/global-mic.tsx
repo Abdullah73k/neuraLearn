@@ -178,6 +178,9 @@ export default function GlobalMic() {
         // Add the question as a message to the node's chat
         addMessageToNode(routingResult.nodeId, userMessage);
         
+        // Wait for Chat component to mount and set up event listener
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         // Dispatch event to notify chat component to send the message
         // The chat component will listen for this and trigger the AI
         window.dispatchEvent(new CustomEvent('voice-message-added', {
