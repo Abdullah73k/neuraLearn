@@ -41,6 +41,7 @@ export default function GlobalMic() {
   const {
     setSelectedNode,
     addMessageToNode,
+    setIsChatBarOpen,
   } = useMindMapActions();
 
   // Get nodes for context
@@ -167,6 +168,9 @@ export default function GlobalMic() {
       if (targetNode) {
         // Select the node to open its chat
         setSelectedNode(targetNode);
+        
+        // Open the chat sidebar
+        setIsChatBarOpen();
         
         // Create a user message
         const userMessage = {
