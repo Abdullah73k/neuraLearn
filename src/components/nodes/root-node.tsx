@@ -26,8 +26,7 @@ export function RootNode({ data, selected }: NodeProps<RootNode>) {
 	return (
 		<div
 			className={cn(
-				"relative rounded-2xl bg-white shadow-sm px-6 py-4 min-w-[280px] min-h-[80px] flex items-center justify-center transition-all",
-				selected ? "ring-2 ring-cyan-200" : ""
+				"relative rounded-2xl bg-white shadow-sm px-6 py-4 min-w-[280px] min-h-[80px] flex items-center justify-center transition-all"
 			)}
 		>
 			{/* Animated shine border effect - only when selected */}
