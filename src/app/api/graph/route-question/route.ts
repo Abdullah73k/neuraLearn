@@ -1,7 +1,8 @@
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { getMongoDb } from "@/lib/db/client";
+import { getMongoDb, vectorSearch } from "@/lib/db/client";
+import { generateEmbedding } from "@/lib/embeddings";
 import { createNode } from "@/lib/graph-tools";
 import type { Node } from "@/types/graph";
 
@@ -27,10 +28,29 @@ export async function POST(req: Request) {
 
         const db = await getMongoDb();
 
-        // Get all nodes in this workspace with their summaries and titles
+        // Get root node for context
+        const rootNode = await db
+            .collection<Node>("nodes")
+            .findOne({ id: rootId, parent_id: null });
+
+        if (!rootNode) {
+            return Response.json(
+                { error: "Root node not found" },
+                { status: 404 }
+            );
+        }
+
+        // Use vector search to find top 5 most semantically similar nodes
+        const queryEmbedding = await generateEmbedding(question);
+        const similarNodes = await vectorSearch(queryEmbedding, rootId, 5);
+
+        // Always include root node + top similar nodes
+        const relevantNodeIds = [rootId, ...similarNodes.map(n => n.id)];
+        
+        // Fetch full details for these nodes
         const nodes = await db
             .collection<Node>("nodes")
-            .find({ root_id: rootId })
+            .find({ id: { $in: relevantNodeIds } })
             .project({ id: 1, title: 1, summary: 1, parent_id: 1 })
             .toArray();
 
@@ -41,12 +61,14 @@ export async function POST(req: Request) {
             );
         }
 
-        // Build context about the knowledge graph
+        // Build context about the knowledge graph with similarity scores
         const nodeDescriptions = nodes.map((node) => {
-            const description = node.summary || `Topic: ${node.title}`;
             const isRoot = node.parent_id === null;
+            const similarNode = similarNodes.find(n => n.id === node.id);
+            const scoreInfo = similarNode ? ` (Similarity: ${(similarNode.score * 100).toFixed(1)}%)` : " (ROOT NODE)";
+            
             return `- Node ID: ${node.id}
-  Title: "${node.title}"
+  Title: "${node.title}"${scoreInfo}
   ${node.summary ? `Summary: ${node.summary}` : "(No summary yet - this node hasn't been explored)"}
   Type: ${isRoot ? "ROOT NODE" : "Subtopic"}`;
         }).join("\n\n");
@@ -64,7 +86,7 @@ export async function POST(req: Request) {
             }) as any,
             prompt: `You are a routing system for a knowledge graph. Route user questions to the right place.
 
-## Available Nodes:
+## Most Relevant Nodes (via Vector Search):
 ${nodeDescriptions}
 
 ## User's Question:
@@ -72,26 +94,37 @@ ${nodeDescriptions}
 
 ## Decision Logic:
 
-**USE EXISTING NODE** (action: "use_existing") ONLY when:
-- The question is asking for MORE INFO about something ALREADY discussed in that node's summary
-- Example: If "Lakers" node summary mentions "LeBron scored 40 points", and user asks "How many points did LeBron score?" → use_existing
+### STEP 1: Check for Existing Nodes (Prevent Duplicates)
+**USE EXISTING NODE** (action: "use_existing") when:
+- A node exists with **HIGH similarity (>85%)** AND similar/matching title
+  - Example: Question "Who is LeBron James?" + Node "LeBron James" (92% similarity) → **use_existing**
+  - Example: Question "What are derivatives?" + Node "Derivatives" (88% similarity) → **use_existing**
+- The question asks for more info about something ALREADY in that node's summary
+  - Example: "Lakers" node mentions "LeBron", user asks "Tell me about LeBron on the Lakers" → **use_existing** Lakers node
 
+### STEP 2: Create New Node (Only if no duplicate exists)
 **CREATE NEW NODE** (action: "create_new") when:
-- The question is about a NEW TOPIC, PERSON, or CONCEPT not yet covered
-- Questions like "Who is [person]?" or "What is [concept]?" almost ALWAYS need a new node
-- Find the most SEMANTICALLY RELATED parent node
+- **No high-similarity match exists** (<85% on all nodes)
+- The question is about a NEW topic/person/concept not yet covered
+- Pick the parent with **HIGHEST similarity score** (shows it's most related)
+- If all similarity scores are low (<50%), create under ROOT NODE
 
 ## Examples:
-- "Who is LeBron James?" + node "LA Lakers" exists → CREATE "LeBron James" under "LA Lakers" (he plays for Lakers)
-- "Who is Giannis?" + node "Milwaukee Bucks" exists → CREATE "Giannis Antetokounmpo" under "Milwaukee Bucks" (he plays for Bucks)
-- "What is the chain rule?" + node "Calculus" exists → CREATE "Chain Rule" under "Calculus"
-- "Tell me more about derivatives" + node "Derivatives" exists with relevant summary → USE EXISTING "Derivatives"
+**Preventing Duplicates:**
+- "Who is Giannis?" + "Giannis Antetokounmpo" exists (95% similarity) → **use_existing** (not duplicate!)
+- "Tell me about LeBron" + "LeBron James" exists (90% similarity) → **use_existing**
+- "What is calculus?" + "Calculus" exists (88% similarity) → **use_existing**
 
-## CRITICAL:
-- For "Who is X?" questions about people → ALWAYS create_new (people deserve their own nodes)
-- Pick the parent that is most SEMANTICALLY related, not just the root
-- suggestedTitle: MAX 3-4 words (person's name or concept name)
-- reasoning: Be brief and concise (max 250 chars)
+**Creating New Nodes:**
+- "Who is Damian Lillard?" + No similar nodes found (<60% on all) → **create_new** under highest match
+- "What is the chain rule?" + "Calculus" (70% similarity), no "Chain Rule" node → **create_new** under "Calculus"
+- "Who is Giannis?" + "Milwaukee Bucks" (80%), no "Giannis" node → **create_new** under "Milwaukee Bucks"
+
+## CRITICAL RULES:
+1. **Priority: Check similarity FIRST** - If >85% match exists with similar title → use_existing (prevents duplicates)
+2. **For creating**: Pick parent with HIGHEST similarity score (unless root)
+3. **suggestedTitle**: MAX 3-4 words, match existing naming style if similar node exists
+4. **reasoning**: Brief and concise (max 250 chars)
 
 Respond with your routing decision:`,
         });
