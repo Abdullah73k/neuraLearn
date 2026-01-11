@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   useGetActiveWorkspace,
-  useGetCurrentRelationType,
   useMindMapActions,
 } from "@/store/hooks";
 import {
@@ -13,24 +12,18 @@ import {
   Loader2Icon,
   CheckIcon,
   XIcon,
-  Volume2Icon,
+  ArrowRightIcon,
+  PlusIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RelationType } from "@/types/edges";
 
-type CommandType =
-  | "create_node"
-  | "delete_node"
-  | "copy_response"
-  | "navigate_to"
-  | "connect_nodes"
-  | "unknown";
-
-type ClassifiedCommand = {
-  command: CommandType;
-  params: Record<string, string>;
-  confidence: number;
-  explanation: string;
+type RoutingResult = {
+  action: "navigate_to_new" | "navigate_to_existing";
+  nodeId: string;
+  nodeTitle: string;
+  parentId?: string;
+  reasoning: string;
+  question: string;
 };
 
 type GlobalMicState = "idle" | "recording" | "processing" | "confirming";
@@ -38,27 +31,20 @@ type GlobalMicState = "idle" | "recording" | "processing" | "confirming";
 export default function GlobalMic() {
   const [state, setState] = useState<GlobalMicState>("idle");
   const [transcription, setTranscription] = useState<string>("");
-  const [command, setCommand] = useState<ClassifiedCommand | null>(null);
+  const [routingResult, setRoutingResult] = useState<RoutingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const activeWorkspace = useGetActiveWorkspace();
-  const currentRelationType = useGetCurrentRelationType();
   const {
     setSelectedNode,
-    deleteNode,
-    createSubtopicNode,
-    onConnectForActive,
+    addMessageToNode,
   } = useMindMapActions();
 
   // Get nodes for context
   const nodes = activeWorkspace?.nodes || [];
-  const nodeInfos = nodes.map((n) => ({
-    id: n.id,
-    title: n.data.title,
-    type: n.type,
-  }));
 
   const startRecording = useCallback(async () => {
     try {
@@ -66,6 +52,7 @@ export default function GlobalMic() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
       mediaRecorderRef.current = mediaRecorder;
+      streamRef.current = stream;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -75,11 +62,17 @@ export default function GlobalMic() {
       };
 
       mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
+        // Stop tracks and wait for final data
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        }
+        // Small delay to ensure all chunks are collected
+        await new Promise(resolve => setTimeout(resolve, 100));
         await processRecording();
       };
 
-      mediaRecorder.start();
+      // Start recording with timeslice to collect data periodically
+      mediaRecorder.start(100); // Collect data every 100ms
       setState("recording");
     } catch (err) {
       console.error("Failed to start recording:", err);
@@ -98,6 +91,16 @@ export default function GlobalMic() {
     try {
       const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       
+      console.log("Audio chunks collected:", audioChunksRef.current.length, "Total size:", audioBlob.size);
+      
+      // Check if we have valid audio data
+      if (audioBlob.size < 100) {
+        console.error("Audio blob too small, likely no data recorded");
+        setError("No audio recorded. Please try again.");
+        setState("idle");
+        return;
+      }
+      
       // Step 1: Transcribe
       const transcribeFormData = new FormData();
       transcribeFormData.append("audio", audioBlob, "recording.webm");
@@ -115,23 +118,22 @@ export default function GlobalMic() {
       const transcribedText = transcribeData.text;
       setTranscription(transcribedText);
 
-      // Step 2: Classify command
-      const classifyResponse = await fetch("/api/classify-command", {
+      // Step 2: Intelligent routing - find the best node for this question
+      const routeResponse = await fetch("/api/graph/route-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          transcription: transcribedText,
-          nodes: nodeInfos,
-          currentRelationType,
+          question: transcribedText,
+          rootId: activeWorkspace?.id,
         }),
       });
 
-      if (!classifyResponse.ok) {
-        throw new Error("Command classification failed");
+      if (!routeResponse.ok) {
+        throw new Error("Failed to route question");
       }
 
-      const classifiedCommand: ClassifiedCommand = await classifyResponse.json();
-      setCommand(classifiedCommand);
+      const routing: RoutingResult = await routeResponse.json();
+      setRoutingResult(routing);
       setState("confirming");
     } catch (err) {
       console.error("Processing error:", err);
@@ -140,138 +142,69 @@ export default function GlobalMic() {
     }
   };
 
-  const executeCommand = useCallback(async () => {
-    if (!command || !activeWorkspace) return;
+  const executeRouting = useCallback(async () => {
+    if (!routingResult || !activeWorkspace) return;
 
     try {
-      switch (command.command) {
-        case "create_node": {
-          const sourceId = command.params.source_node_id;
-          const newTitle = command.params.new_node_title || "New Node";
-          
-          // Create new subtopic node
-          const newNodeId = crypto.randomUUID();
-          const sourceNode = nodes.find((n) => n.id === sourceId);
-          const newPosition = sourceNode
-            ? { x: sourceNode.position.x + 200, y: sourceNode.position.y + 100 }
-            : { x: 200, y: 200 };
+      // If a new node was created, we need to refresh the workspace
+      if (routingResult.action === "navigate_to_new") {
+        // Reload workspaces to get the new node
+        const { useMindMapStore } = await import("@/store/store");
+        await useMindMapStore.getState().actions.loadWorkspacesFromDb();
+        
+        // Small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
-          // We need to manually add the node and edge
-          const { useMindMapStore } = await import("@/store/store");
-          const state = useMindMapStore.getState();
-          
-          if (!state.activeWorkspaceId) break;
-          
-          const workspace = state.workspaces.find(
-            (w) => w.id === state.activeWorkspaceId
-          );
-          if (!workspace) break;
-
-          const newNode = {
-            id: newNodeId,
-            type: "subtopic" as const,
-            position: newPosition,
-            data: { title: newTitle },
-          };
-
-          const newEdge = {
-            id: crypto.randomUUID(),
-            source: sourceId,
-            target: newNodeId,
-            type: "mindmap",
-            data: { relationType: currentRelationType as RelationType },
-          };
-
-          useMindMapStore.setState({
-            workspaces: state.workspaces.map((w) =>
-              w.id === state.activeWorkspaceId
-                ? {
-                    ...w,
-                    nodes: [...w.nodes, newNode],
-                    edges: [...w.edges, newEdge],
-                  }
-                : w
-            ),
-          });
-          break;
-        }
-
-        case "delete_node": {
-          const targetId = command.params.target_node_id;
-          if (targetId) {
-            deleteNode(targetId);
+      // Find the target node and select it
+      const { useMindMapStore } = await import("@/store/store");
+      const currentWorkspace = useMindMapStore.getState().workspaces.find(
+        w => w.id === activeWorkspace.id
+      );
+      
+      const targetNode = currentWorkspace?.nodes.find(n => n.id === routingResult.nodeId);
+      
+      if (targetNode) {
+        // Select the node to open its chat
+        setSelectedNode(targetNode);
+        
+        // Create a user message
+        const userMessage = {
+          id: crypto.randomUUID(),
+          role: "user" as const,
+          parts: [{ type: "text" as const, text: routingResult.question }],
+        };
+        
+        // Add the question as a message to the node's chat
+        addMessageToNode(routingResult.nodeId, userMessage);
+        
+        // Dispatch event to notify chat component to send the message
+        // The chat component will listen for this and trigger the AI
+        window.dispatchEvent(new CustomEvent('voice-message-added', {
+          detail: {
+            nodeId: routingResult.nodeId,
+            question: routingResult.question,
           }
-          break;
-        }
-
-        case "copy_response": {
-          const targetId = command.params.target_node_id;
-          if (targetId && activeWorkspace.messages[targetId]) {
-            const messages = activeWorkspace.messages[targetId];
-            const lastAssistantMessage = messages
-              .filter((m) => m.role === "assistant")
-              .pop();
-            if (lastAssistantMessage) {
-              const textPart = lastAssistantMessage.parts.find(
-                (p) => p.type === "text"
-              );
-              if (textPart && "text" in textPart) {
-                await navigator.clipboard.writeText(textPart.text);
-              }
-            }
-          }
-          break;
-        }
-
-        case "navigate_to": {
-          const targetId = command.params.target_node_id;
-          const targetNode = nodes.find((n) => n.id === targetId);
-          if (targetNode) {
-            setSelectedNode(targetNode);
-          }
-          break;
-        }
-
-        case "connect_nodes": {
-          const sourceId = command.params.source_node_id;
-          const targetId = command.params.target_node_id;
-          if (sourceId && targetId) {
-            onConnectForActive({
-              source: sourceId,
-              target: targetId,
-              sourceHandle: null,
-              targetHandle: null,
-            });
-          }
-          break;
-        }
-
-        default:
-          setError("Unknown command");
+        }));
+      } else {
+        console.error("Could not find target node:", routingResult.nodeId);
+        setError("Failed to find the target node");
       }
 
       // Reset state
       setState("idle");
       setTranscription("");
-      setCommand(null);
+      setRoutingResult(null);
     } catch (err) {
-      console.error("Command execution error:", err);
-      setError("Failed to execute command");
+      console.error("Routing execution error:", err);
+      setError("Failed to navigate to node");
     }
-  }, [
-    command,
-    activeWorkspace,
-    nodes,
-    currentRelationType,
-    deleteNode,
-    setSelectedNode,
-    onConnectForActive,
-  ]);
+  }, [routingResult, activeWorkspace, setSelectedNode, addMessageToNode]);
 
-  const cancelCommand = useCallback(() => {
+  const cancelRouting = useCallback(() => {
     setState("idle");
     setTranscription("");
-    setCommand(null);
+    setRoutingResult(null);
     setError(null);
   }, []);
 
@@ -304,28 +237,13 @@ export default function GlobalMic() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleRecording]);
 
-  const getCommandDisplayText = () => {
-    if (!command) return "";
+  const getRoutingDisplayText = () => {
+    if (!routingResult) return "";
     
-    switch (command.command) {
-      case "create_node":
-        const sourceNode = nodes.find((n) => n.id === command.params.source_node_id);
-        return `Create "${command.params.new_node_title}" from "${sourceNode?.data.title || "root"}"`;
-      case "delete_node":
-        const targetNode = nodes.find((n) => n.id === command.params.target_node_id);
-        return `Delete "${targetNode?.data.title || "node"}"`;
-      case "copy_response":
-        const copyNode = nodes.find((n) => n.id === command.params.target_node_id);
-        return `Copy response from "${copyNode?.data.title || "node"}"`;
-      case "navigate_to":
-        const navNode = nodes.find((n) => n.id === command.params.target_node_id);
-        return `Navigate to "${navNode?.data.title || "node"}"`;
-      case "connect_nodes":
-        const srcNode = nodes.find((n) => n.id === command.params.source_node_id);
-        const destNode = nodes.find((n) => n.id === command.params.target_node_id);
-        return `Connect "${srcNode?.data.title}" to "${destNode?.data.title}"`;
-      default:
-        return "Unknown command";
+    if (routingResult.action === "navigate_to_new") {
+      return `Create new node "${routingResult.nodeTitle}"`;
+    } else {
+      return `Navigate to "${routingResult.nodeTitle}"`;
     }
   };
 
@@ -333,7 +251,7 @@ export default function GlobalMic() {
 
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3">
-      {/* Transcription & Confirmation Panel */}
+      {/* Routing Result & Confirmation Panel */}
       {(state === "confirming" || error) && (
         <div className="bg-background/95 backdrop-blur-lg border border-border rounded-2xl shadow-2xl p-4 min-w-[320px] max-w-[480px] animate-in slide-in-from-bottom-4 fade-in duration-300">
           {error ? (
@@ -342,7 +260,7 @@ export default function GlobalMic() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={cancelCommand}
+                onClick={cancelRouting}
                 className="rounded-full"
               >
                 Dismiss
@@ -352,21 +270,25 @@ export default function GlobalMic() {
             <>
               {/* Transcription */}
               <div className="mb-3">
-                <p className="text-xs text-muted-foreground mb-1">You said:</p>
+                <p className="text-xs text-muted-foreground mb-1">Your question:</p>
                 <p className="text-sm font-medium">&quot;{transcription}&quot;</p>
               </div>
 
-              {/* Interpreted Command */}
+              {/* Routing Decision */}
               <div className="mb-4 p-3 bg-muted/50 rounded-xl">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Interpreted as:
-                </p>
-                <p className="text-sm font-semibold text-primary">
-                  {getCommandDisplayText()}
-                </p>
-                {command && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Confidence: {Math.round(command.confidence * 100)}%
+                <div className="flex items-center gap-2 mb-2">
+                  {routingResult?.action === "navigate_to_new" ? (
+                    <PlusIcon className="size-4 text-green-500" />
+                  ) : (
+                    <ArrowRightIcon className="size-4 text-blue-500" />
+                  )}
+                  <p className="text-sm font-semibold text-primary">
+                    {getRoutingDisplayText()}
+                  </p>
+                </div>
+                {routingResult && (
+                  <p className="text-xs text-muted-foreground">
+                    {routingResult.reasoning}
                   </p>
                 )}
               </div>
@@ -376,7 +298,7 @@ export default function GlobalMic() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={cancelCommand}
+                  onClick={cancelRouting}
                   className="rounded-full gap-2"
                 >
                   <XIcon className="size-4" />
@@ -384,11 +306,11 @@ export default function GlobalMic() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={executeCommand}
+                  onClick={executeRouting}
                   className="rounded-full gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
                 >
                   <CheckIcon className="size-4" />
-                  Confirm
+                  {routingResult?.action === "navigate_to_new" ? "Create & Go" : "Navigate"}
                 </Button>
               </div>
             </>
@@ -432,10 +354,10 @@ export default function GlobalMic() {
 
       {/* Hint text */}
       <p className="text-xs text-muted-foreground">
-        {state === "idle" && "Press G or click to speak"}
+        {state === "idle" && "Press G or click to ask a question"}
         {state === "recording" && "Listening... Press G or click to stop"}
-        {state === "processing" && "Processing..."}
-        {state === "confirming" && "Confirm your command"}
+        {state === "processing" && "Finding the best place for your question..."}
+        {state === "confirming" && "Confirm routing"}
       </p>
     </div>
   );
