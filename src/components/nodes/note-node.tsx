@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useMindMapActions } from "@/store/hooks";
 import { ShineBorder } from "@/components/ui/shine-border";
+import { NeonGradientBorder } from "@/components/ui/neon-gradient-border";
 
 /**
  * Note Node Component
@@ -29,9 +30,17 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNode>) {
 	return (
 		<div
 			className={cn(
-				"relative rounded-2xl bg-white shadow-sm px-4 py-3 min-w-[240px] min-h-[180px] flex flex-col transition-all"
+				"relative rounded-2xl bg-white px-4 py-3 min-w-[240px] min-h-[180px] flex flex-col transition-all"
 			)}
+			style={{ boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)" }}
 		>
+			{/* Neon gradient border effect - always visible */}
+			<NeonGradientBorder
+				borderWidth={2}
+				neonColors={{ firstColor: "#f97316", secondColor: "#eab308" }}
+				blurAmount={12}
+			/>
+			
 			{/* Animated shine border effect - only when selected */}
 			{selected && (
 				<ShineBorder
