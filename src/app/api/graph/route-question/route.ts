@@ -62,7 +62,6 @@ export async function POST(req: Request) {
                 suggestedTitle: z.string().max(50).optional(),
                 suggestedSummary: z.string().max(150).optional(),
             }) as any,
-            maxTokens: 500,
             prompt: `You are a routing system for a knowledge graph. Route user questions to the right place.
 
 ## Available Nodes:

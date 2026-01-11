@@ -278,14 +278,31 @@ export const useMindMapStore = create<MindMapStore>()(
 						}
 					},
 					async createWorkspace() {
-						const state = get();
-						const existingCount = state.workspaces.length;
-						const title = existingCount === 0 
-							? "Main Topic of This Mindspace" 
-							: `New Mindspace ${existingCount + 1}`;
-						
 						try {
-							// Create topic in MongoDB first
+							// Fetch existing topics from MongoDB to check for duplicate titles
+							const existingTopicsResponse = await fetch("/api/graph/topics");
+							const existingTopicsData = await existingTopicsResponse.json();
+							
+							const existingTitles = new Set<string>();
+							if (existingTopicsData.success && existingTopicsData.topics) {
+								existingTopicsData.topics.forEach((topic: { title: string }) => {
+									existingTitles.add(topic.title.toLowerCase());
+								});
+							}
+							
+							// Generate a unique title
+							let title = "Main Topic of This Mindspace";
+							let counter = 1;
+							
+							// If the default title exists, try incrementing counter
+							if (existingTitles.has(title.toLowerCase())) {
+								do {
+									counter++;
+									title = `New Mindspace ${counter}`;
+								} while (existingTitles.has(title.toLowerCase()));
+							}
+							
+							// Create topic in MongoDB
 							const response = await fetch("/api/graph/topics", {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
