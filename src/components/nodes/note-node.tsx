@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useMindMapActions } from "@/store/hooks";
+import { ShineBorder } from "@/components/ui/shine-border";
 
 /**
  * Note Node Component
@@ -28,12 +29,19 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNode>) {
 	return (
 		<div
 			className={cn(
-				"relative rounded-2xl border bg-white shadow-sm px-4 py-3 min-w-[240px] min-h-[180px] flex flex-col transition-all",
+				"relative rounded-2xl bg-white shadow-sm px-4 py-3 min-w-[240px] min-h-[180px] flex flex-col transition-all",
 				selected
-					? "border-orange-500 ring-2 ring-orange-200"
-					: "border-neutral-200"
+					? "ring-2 ring-orange-200"
+					: ""
 			)}
 		>
+			{/* Animated shine border effect */}
+			<ShineBorder
+				borderWidth={2}
+				duration={12}
+				shineColor={["#f97316", "#eab308", "#84cc16", "#f97316"]}
+			/>
+			
 			{/* Header area with title - similar to "output" label in reference */}
 			<div className="mb-3 pb-2 border-b border-neutral-100">
 				<Input
