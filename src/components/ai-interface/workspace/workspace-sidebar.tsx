@@ -7,7 +7,7 @@ import {
 	SidebarHeader,
 } from "@/components/ui/sidebar";
 import { useMindMapActions, useGetWorkspaces } from "@/store/hooks";
-import { Button } from "@/components/ui/button";
+import { RainbowButton } from "@/components/ui/rainbow-button";
 
 export function WorkspacesSidebar() {
 	const { createWorkspace } = useMindMapActions();
@@ -19,14 +19,13 @@ export function WorkspacesSidebar() {
 			side="right"
 		>
 			<SidebarHeader>
-				<Button
+				<RainbowButton
 					onClick={() => {
 						createWorkspace();
 					}}
-					className="cursor-pointer"
 				>
 					Add Workspace
-				</Button>
+				</RainbowButton>
 			</SidebarHeader>
 			<SidebarContent>
 				<WorkspacesContainer workspaces={workspaces} />
