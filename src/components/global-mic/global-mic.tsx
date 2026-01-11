@@ -57,7 +57,7 @@ export default function GlobalMic() {
   const activeWorkspace = useGetActiveWorkspace();
   const selectedNode = useGetSelectedNode();
   const {
-    setSelectedNode,
+    selectNodeProgrammatically,
     addMessageToNode,
     setIsChatBarOpen,
     createNoteNodeOnTarget,
@@ -316,7 +316,7 @@ export default function GlobalMic() {
       
       if (targetNode) {
         // Select the node to open its chat
-        setSelectedNode(targetNode);
+        selectNodeProgrammatically(targetNode);
         
         // Open the chat sidebar
         setIsChatBarOpen();
@@ -343,7 +343,7 @@ export default function GlobalMic() {
       console.error("Routing execution error:", err);
       setError("Failed to navigate to node");
     }
-  }, [routingResult, activeWorkspace, setSelectedNode, setIsChatBarOpen]);
+  }, [routingResult, activeWorkspace, selectNodeProgrammatically, setIsChatBarOpen]);
 
   const executeNoteCreation = useCallback(() => {
     if (!noteResult || !activeWorkspace) return;

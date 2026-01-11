@@ -69,10 +69,18 @@ export default function InfinityBoard() {
 					}}
 					// This gives u info of the node u click on
 					onSelectionChange={({ nodes }) => {
-						const selectedNode = nodes[0] ? nodes[0] : null;
-						console.log("Selected Node: ", selectedNode);
-						setSelectedNode(selectedNode);
-						closeChatBar();
+						const newSelectedNode = nodes[0] ? nodes[0] : null;
+						console.log("Selected Node: ", newSelectedNode);
+						
+						// Only update if selection actually changed (prevents loops from programmatic selection)
+						if (newSelectedNode?.id !== selectedNode?.id) {
+							setSelectedNode(newSelectedNode);
+							// Only close chat bar if user deselected (clicked empty space)
+							// Don't close if they selected a different node - let them keep chatting
+							if (!newSelectedNode) {
+								closeChatBar();
+							}
+						}
 					}}
 					onNodeDoubleClick={() => {
 						if (!isChatBarOpen) {

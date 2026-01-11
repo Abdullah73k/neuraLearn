@@ -15,6 +15,7 @@ export type MindMapWorkspace = {
 
 export type MindMapActions = {
 	setSelectedNode: (node: AppNode | null) => void;
+	selectNodeProgrammatically: (node: AppNode | null) => void;
 	setIsChatBarOpen: () => void;
 	createWorkspace: () => Promise<void>;
 	deleteWorkspace: (id: string) => void;

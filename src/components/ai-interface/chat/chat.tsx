@@ -48,7 +48,7 @@ const Chat = () => {
 	const activeWorkspace = useGetActiveWorkspace();
 	const nodeId = selectedNode?.id as string;
 	const persistentMessages = useGetNodeChatMessages();
-	const { appendNodeChat, setSelectedNode, setIsChatBarOpen } = useMindMapActions();
+	const { appendNodeChat, selectNodeProgrammatically, setIsChatBarOpen } = useMindMapActions();
 	const edges = useGetSelectedNodeEdges();
 	const [input, setInput] = useState("");
 	const [model, setModel] = useState<string>(models.value);
@@ -211,7 +211,7 @@ const Chat = () => {
 					);
 					const newNode = updatedWorkspace?.nodes.find(n => n.id === newNodeId);
 					if (newNode) {
-						setSelectedNode(newNode);
+						selectNodeProgrammatically(newNode);
 						setIsChatBarOpen();
 					}
 				}
@@ -228,7 +228,7 @@ const Chat = () => {
 					// Find and navigate to the target node
 					const targetNode = activeWorkspace.nodes.find(n => n.id === routing.nodeId);
 					if (targetNode) {
-						setSelectedNode(targetNode);
+						selectNodeProgrammatically(targetNode);
 						setIsChatBarOpen();
 					}
 				} else {
@@ -255,7 +255,7 @@ const Chat = () => {
 		} finally {
 			setIsRouting(false);
 		}
-	}, [activeWorkspace, nodeId, model, webSearch, edges, sendMessage, setSelectedNode, setIsChatBarOpen]);
+	}, [activeWorkspace, nodeId, model, webSearch, edges, sendMessage, selectNodeProgrammatically, setIsChatBarOpen]);
 
 	const handleSubmit = async (message: PromptInputMessage) => {
 		const hasText = Boolean(message.text);

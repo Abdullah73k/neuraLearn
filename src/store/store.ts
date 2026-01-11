@@ -27,14 +27,19 @@ export const useMindMapStore = create<MindMapStore>()(
 				nodeChatSummaries: {},
 				actions: {
 					setSelectedNode(node) {
+						set({ selectedNode: node });
+					},
+					// Use this when programmatically selecting a node (not from ReactFlow click)
+					// This also updates the visual selection in ReactFlow
+					selectNodeProgrammatically(node) {
 						const state = get();
 						const activeWorkspace = activeWorkspaceHelper(state);
 						
-						// Update the selected property on nodes for ReactFlow visual selection
-						if (activeWorkspace) {
+						if (activeWorkspace && node) {
+							// Update the selected property on nodes for ReactFlow visual selection
 							const updatedNodes = activeWorkspace.nodes.map(n => ({
 								...n,
-								selected: n.id === node?.id,
+								selected: n.id === node.id,
 							}));
 							
 							const updatedWorkspace = {
