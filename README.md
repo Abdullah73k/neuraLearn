@@ -2,7 +2,7 @@
 
 **A voice-first, graph-based AI learning interface designed for cognitive accessibility.**
 
-## Screenshots
+## App
 
 ![NeuraLearn — Workspace + canvas](https://cdn.discordapp.com/attachments/1459611099979714806/1459937067080482889/image.png?ex=696517d9&is=6963c659&hm=f7168c2764d801dd29220f781df9944f581b7d51ef0fb0a8bded97be16dedbd0&)
 
