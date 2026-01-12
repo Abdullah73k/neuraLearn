@@ -2,6 +2,14 @@
 
 **A voice-first, graph-based AI learning interface designed for cognitive accessibility.**
 
+## Screenshots
+
+![NeuraLearn — Workspace + canvas](https://cdn.discordapp.com/attachments/1459611099979714806/1459937067080482889/image.png?ex=696517d9&is=6963c659&hm=f7168c2764d801dd29220f781df9944f581b7d51ef0fb0a8bded97be16dedbd0&)
+
+![NeuraLearn — Node chat + AI responses](https://cdn.discordapp.com/attachments/1459611099979714806/1459937067784998973/image.png?ex=696517d9&is=6963c659&hm=592d300936548edf4a040de8208452219eeae96f36280dfa777317fcfd685934&)
+
+![NeuraLearn — Voice-first interactions](https://cdn.discordapp.com/attachments/1459611099979714806/1459937068305219614/image.png?ex=696517d9&is=6963c659&hm=0b2a298a44f1ab29c9095667b569c3af5c39e0626775451c83b2abdb9cee2172&)
+
 NeuraLearn reimagines how users interact with AI by replacing traditional linear chat interfaces with an infinite canvas mind map. Users can speak questions naturally, and the system intelligently routes them to the correct knowledge node, creates new nodes when needed, and responds with context-aware answers. Built with accessibility at its core, NeuraLearn reduces cognitive load through spatial organization, voice input/output, and visual relationship mapping.
 
 ---
