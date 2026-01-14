@@ -1,6 +1,6 @@
 # NeuraLearn
 
-**A voice-first, graph-based AI learning interface designed for cognitive accessibility.**
+**A voice-first, graph-based AI Research/learning interface designed for cognitive accessibility.**
 
 ## App
 
