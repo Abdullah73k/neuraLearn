@@ -3,7 +3,7 @@
 dist
 node_modules
 Dockerfile
-docker-compose.yml
+docker-compose*
 .env
 .env.*
 npm-debug.log
